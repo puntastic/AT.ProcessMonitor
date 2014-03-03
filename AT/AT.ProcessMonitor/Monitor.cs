@@ -41,8 +41,6 @@ namespace AT.ProcessMonitor
                     continue;
                 }
 
-
-
                 try
                 {
                     if (!montProcess.StartOrAttachToProcessAndWait((montProcess.config.startOptions.StartImmediately || !firstTimeStart) && !WaitForManualRestart))
@@ -50,9 +48,13 @@ namespace AT.ProcessMonitor
                         continue;
                     }
                 }
-                catch (FileNotFoundException ex)
+                catch (Exception ex)
                 {
-                    reporterRef.SendException(ex.Message, montProcess.config.startOptions.ProcessName);
+                    Console.WriteLine("Exception raised when tring to start {0}; Emailing exception then Aborting.", montProcess.config.startOptions.ProcessName);
+                    if (ex.GetType() == typeof(FileNotFoundException) || ex.GetType() == typeof(System.ComponentModel.Win32Exception))
+                    reporterRef.SendException(ex.Message, "Process Monitor] starting [" + montProcess.config.startOptions.ProcessName);
+
+                    return;
                 }
                 if (restartTimer.IsRunning)
                 {

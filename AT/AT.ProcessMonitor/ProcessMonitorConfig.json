@@ -49,7 +49,6 @@
 			"exceptionLoggingOptions":
 			{
 				"TimeBetweenEmails_Minutes":10,
-				"ExceptionLogFileName":"ErrorLog.txt"
 			}
 		}
 	]

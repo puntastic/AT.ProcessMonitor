@@ -73,18 +73,18 @@ namespace AT.ProcessMonitor
 
                 if (exceptionLogFound)
                 {
-                    //SendException(File.ReadAllText(logFile), processName);
+                    SendException(File.ReadAllText(logFile), processName);
                 }
                 //no exit code recorded
                 else if (exitCode != null)
                 {
-                    //SendException(File.ReadAllText(preMessage + "No log file, Exit Code: " + exitCode), processName);
+                    SendException(File.ReadAllText(preMessage + "No log file, Exit Code: " + exitCode), processName);
                 }
                 else
                 {
-                    // SendException(File.ReadAllText(preMessage +
-                    //  "No log file, Could not capture exit code (invalid process handle), did the monitor not start the process?"),
-                    //   processName);
+                     SendException(File.ReadAllText(preMessage +
+                      "No log file, Could not capture exit code (invalid process handle), did the monitor not start the process?"),
+                       processName);
                 }
        
         }
