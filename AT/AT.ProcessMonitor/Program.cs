@@ -60,7 +60,8 @@ namespace AT.ProcessMonitor
 
             foreach (var currentItem in monitorConfig.Items)
             {
-                Monitor nextMonitor = new Monitor { montProcess = new MonitoredProcess { config = currentItem }, reporterRef = reporter };
+                Monitor nextMonitor = new Monitor();
+                nextMonitor.Create(currentItem, reporter, new MonitoredProcess());
 
                 //create and start a new task - which does not need to be held on to since the thread pool will still reference it
                 monitorFactory.StartNew(() => nextMonitor.Start());

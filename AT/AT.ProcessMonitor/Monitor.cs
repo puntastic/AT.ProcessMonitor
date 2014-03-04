@@ -14,17 +14,41 @@ namespace AT.ProcessMonitor
 {
     class Monitor
     {
-        public MonitoredProcess montProcess;
-        public Reporter reporterRef;
 
-        //are we starting the process for the first time? or simply restarting it?
-        protected bool firstTimeStart = true;
-        protected bool WaitForManualRestart = false; //false to prevent the process from being started by the monitor,
+        private MonitoredProcess _montProcess;
+        private Reporter _reporterRef;
+
+        private int _restartDelayIfNotUsingLogFileCheck_Minutes;
+        private bool _restartOnlyIfLogFileIsPresent;
+        private bool _notifyOfStartFailure = true;
+
+        public int _timeBetweenEmails_Minutes;
+        public string _exceptionLogFileName;
+
+        private Stopwatch _emailTimer = new Stopwatch(); //one stopwatch, no need to re-inizialize, ever.
+        private Stopwatch _emailTimeout = new Stopwatch();
+
+        public void Create(ConfigItem config, Reporter reporter, MonitoredProcess montProcess)
+        {
+            _restartDelayIfNotUsingLogFileCheck_Minutes = config.restartOptions.RestartDelayIfNotUsingLogFileCheck_Minutes;
+            _restartOnlyIfLogFileIsPresent = config.restartOptions.RestartOnlyIfLogFileIsPresent;
+
+            _timeBetweenEmails_Minutes = config.exceptionLoggingOptions.TimeBetweenEmails_Minutes;
+            _exceptionLogFileName = config.exceptionLoggingOptions.ExceptionLogFileName;
+
+            _reporterRef = reporter;
+
+            _montProcess = montProcess;
+
+            _montProcess.Create(config.Directory, config.startOptions.FileName, config.startOptions.ProcessName,
+                config.startOptions.Args, config.startOptions.StartImmediately);
+        }
 
         public void Start()
         {
             Stopwatch restartTimer = new Stopwatch();
             int timeToWaitBeforeRestart_Milliseconds = 0;
+            bool exceptionLogFound;
 
             while (true)
             {
@@ -35,7 +59,7 @@ namespace AT.ProcessMonitor
                 if (restartTimer.IsRunning && restartTimer.ElapsedMilliseconds < timeToWaitBeforeRestart_Milliseconds)
                 {
                     Console.WriteLine("{0}: Waiting {1} min and {2} seconds before restarting",
-                        montProcess.config.startOptions.ProcessName,
+                        _montProcess.processName,
                         (timeToWaitBeforeRestart_Milliseconds - restartTimer.ElapsedMilliseconds) / 60000,          //minutes to wait for start
                        ((timeToWaitBeforeRestart_Milliseconds - restartTimer.ElapsedMilliseconds) % 60000) / 1000);  //seconds to wait for start
                     continue;
@@ -43,51 +67,41 @@ namespace AT.ProcessMonitor
 
                 try
                 {
-                    if (!montProcess.StartOrAttachToProcessAndWait((montProcess.config.startOptions.StartImmediately || !firstTimeStart) && !WaitForManualRestart))
+                    if (!_montProcess.StartOrAttachToProcessAndWait())
                     {
                         continue;
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Exception raised when tring to start {0}; Emailing exception then Aborting.", montProcess.config.startOptions.ProcessName);
-                    if (ex.GetType() == typeof(FileNotFoundException) || ex.GetType() == typeof(System.ComponentModel.Win32Exception))
-                    reporterRef.SendException(ex.Message, "Process Monitor] starting [" + montProcess.config.startOptions.ProcessName);
+                    Console.WriteLine("Could not start {0}; {1}\n", _montProcess.processName, ex.Message);
+                    _reporterRef.SendReport(out exceptionLogFound, _timeBetweenEmails_Minutes, _emailTimer, "", "ProcessMonitor", null, null);
 
-                    return;
                 }
                 if (restartTimer.IsRunning)
                 {
                     restartTimer.Reset();
                 }
 
-
-
-
-                //process has been started at least once, so get ready to restart it as needed
-                WaitForManualRestart = false;
-                firstTimeStart = false;
-
-                bool exceptionLogFound;
-                reporterRef.ReportOnExit
+                _reporterRef.SendReport
                 (
                     out exceptionLogFound,
-                    montProcess.config.exceptionLoggingOptions.TimeBetweenEmails_Minutes,
-                    montProcess.emailTimer, montProcess.config.Directory + montProcess.config.startOptions.Filename,
-                    montProcess.config.startOptions.ProcessName, montProcess.exitCode,
-                    montProcess.config.Directory + montProcess.config.exceptionLoggingOptions.ExceptionLogFileName
+                    _timeBetweenEmails_Minutes,
+                    _emailTimer, _montProcess.directory + _montProcess.fileName,
+                    _montProcess.processName, _montProcess.exitCode,
+                    _montProcess.directory + _exceptionLogFileName
                 );
 
                 //not using log file restart, so start the timer and wait around (while still looping) for it to lapse
-                if (!montProcess.config.restartOptions.RestartOnlyIfLogFileIsPresent)
+                if (!_restartOnlyIfLogFileIsPresent)
                 {
                     restartTimer.Start();
-                    timeToWaitBeforeRestart_Milliseconds = montProcess.config.restartOptions.RestartDelayIfNotUsingLogFileCheck_Minutes * 60 * 1000;
+                    timeToWaitBeforeRestart_Milliseconds = _restartDelayIfNotUsingLogFileCheck_Minutes * 60 * 1000;
                 }
                 //no log found, and we are using log file restart, so wait for the program to start up again before performing any actions
-                else if (!exceptionLogFound && montProcess.config.restartOptions.RestartOnlyIfLogFileIsPresent)
+                else if (!exceptionLogFound && _restartOnlyIfLogFileIsPresent)
                 {
-                    WaitForManualRestart = true;
+                    _montProcess.WaitForManualRestart();
                 }
                 //else: restart emmediatly as the log file is was both found, and we are using it
             }

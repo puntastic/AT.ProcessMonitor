@@ -31,9 +31,8 @@ namespace AT.ProcessMonitor
         /// <param name="processName">process name that we are reporting on</param>
         /// <param name="exitCode">The programs exit code, if any, or null for none</param>
         /// <param name="logFile">log file to look for, or null if none</param>
-        public void ReportOnExit(out bool exceptionLogFound, int emailTimeout_Minutes, Stopwatch targetStopwatchRef, string processFileNameAndDirectory, string processName, int? exitCode, string logFile)
+        public void SendReport(out bool exceptionLogFound, int emailTimeout_Minutes, Stopwatch targetStopwatchRef, string processFileNameAndDirectory, string processName, int? exitCode, string logFile)
         {
-
             if (logFile != null && File.Exists(logFile))
             {
                 // SendException(File.ReadAllText(logFile), processName);
@@ -43,7 +42,7 @@ namespace AT.ProcessMonitor
             {
                 exceptionLogFound = false;
             }
-
+            return;
             //References ftw
             if (UserGlobalEmailTimeout)
             {
@@ -78,7 +77,7 @@ namespace AT.ProcessMonitor
                 //no exit code recorded
                 else if (exitCode != null)
                 {
-                    SendException(File.ReadAllText(preMessage + "No log file, Exit Code: " + exitCode), processName);
+                    SendException(preMessage + "No log file, Exit Code: " + exitCode, processName);
                 }
                 else
                 {
@@ -91,7 +90,7 @@ namespace AT.ProcessMonitor
 
 
 
-        public void SendException(string message, string processName)
+        public void SendException(string message, string processName, params string[] extraTags)
         {
 
             //Console.WriteLine(message); //Potentially confusing as it can be mistaken for exceptions within the monitor if displayed
@@ -112,8 +111,13 @@ namespace AT.ProcessMonitor
                 Console.WriteLine(ex.Message);
             }
 
+            StringBuilder tags = new StringBuilder();
+            foreach(string currentTag in extraTags)
+            {
+                tags.Append("[" + currentTag + "]");
+            }
             //TODO: Change email target
-            EmailHelper.SendGmail("[" + processName + "] on [" + instanceID + "] at [" + availabilityZone + "] caused an exception",
+            EmailHelper.SendGmail(tags.ToString() + "[" + processName + "] on [" + instanceID + "] at [" + availabilityZone + "] caused an exception",
                 message, true, new MailAddress[] { new MailAddress("example@gmail.com", "example user") }, null, null, null);
 
 

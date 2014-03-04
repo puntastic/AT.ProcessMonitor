@@ -40,7 +40,7 @@ namespace AT.ProcessMonitor
         public bool StartImmediately;
 
         public string ProcessName;
-        public string Filename;                         
+        public string FileName;                         
         public string Args;
     }
 
@@ -48,7 +48,6 @@ namespace AT.ProcessMonitor
     {
         public bool RestartOnlyIfLogFileIsPresent;      // When True, monitor does not try to restart the target application if there is no Exception Log file present
         public int RestartDelayIfNotUsingLogFileCheck_Minutes;  // Time to wait for the target application to restart itself or be restarted by an external agent if not using the Exception log file method
-
     }
 
     public class ExceptionLoggingOptions
