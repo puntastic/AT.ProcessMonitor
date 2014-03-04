@@ -42,7 +42,7 @@ namespace AT.ProcessMonitor
             {
                 exceptionLogFound = false;
             }
-            return;
+            
             //References ftw
             if (UserGlobalEmailTimeout)
             {
